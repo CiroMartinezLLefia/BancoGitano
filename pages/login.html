@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Banco Gitano</title>
+  <title>Banco DAW</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -172,7 +172,7 @@
 
   <!-- Brand -->
   <div class="brand">
-    <div class="brand-name">Banco Gitano</div>
+    <div class="brand-name">Banco DAW</div>
     <div class="brand-sub">Powered by Tink</div>
   </div>
 
@@ -330,7 +330,7 @@
       const stored = JSON.parse(localStorage.getItem('bg_users') || '[]');
       const user   = stored.find(u => u.email === email && u.password === password);
 
-      if (!user && !(email === 'demo@bancogitano.com' && password === 'demo1234')) {
+      if (!user && !(email === 'demo@bancodaw.com' && password === 'demo1234')) {
         errEl.textContent = 'Incorrect email or password.';
         errEl.style.display = 'block';
         return;

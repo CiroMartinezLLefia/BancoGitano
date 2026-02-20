@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Banco Gitano</title>
+  <title>Banco DAW</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="../scripts/chartjs-plugin-datalabels.min.js"></script>
   <style>
@@ -232,7 +232,7 @@
 
   <!-- Top bar -->
   <header class="topbar">
-    <span class="topbar-brand">Banco Gitano</span>
+    <span class="topbar-brand">Banco DAW</span>
     <div class="topbar-right">
       <span class="topbar-user" id="user-greeting"></span>
       <button class="btn-logout" onclick="logoutTink()">
@@ -593,14 +593,15 @@
       // Dividir cada mitad del pastel por transacción (earned/spent), aunque compartan color
       const earnedTxs = filtered.filter(t => t.type === 'income');
       const spentTxs = filtered.filter(t => t.type === 'expense');
-      const pieData = [...earnedTxs.map(t => ({...t, _pieType: 'earned'})), ...spentTxs.map(t => ({...t, _pieType: 'spent'}))];
+      const totalEarned = earnedTxs.reduce((sum, t) => sum + t.amount, 0);
+      const totalSpent = spentTxs.reduce((sum, t) => sum + t.amount, 0);
       chartInstance = new Chart(document.getElementById('main-chart'), {
         type: 'doughnut',
         data: {
-          labels: pieData.map((t, i) => `${t._pieType === 'earned' ? 'Earned' : 'Spent'} #${i+1}`),
+          labels: ['Earned', 'Spent'],
           datasets: [{
-            data: pieData.map(t => t.amount),
-            backgroundColor: pieData.map(t => t._pieType === 'earned' ? EARNED_COLOR : SPENT_COLOR),
+            data: [totalEarned, totalSpent],
+            backgroundColor: [EARNED_COLOR, SPENT_COLOR],
             borderColor: '#161618',
             borderWidth: 2,
             hoverOffset: 6

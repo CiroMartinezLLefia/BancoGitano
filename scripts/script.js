@@ -1,5 +1,5 @@
 /**
- * BANCO GITANO — Client-side Tink integration
+ * BANCO DAW — Client-side Tink integration
  * ─────────────────────────────────────────────
  * All sensitive calls (token exchange, link-session creation, transaction
  * proxying) go through our own Vercel serverless functions under /api/tink/.

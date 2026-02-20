@@ -15,8 +15,6 @@
 const { TINK_API, cors, getClientToken } = require('./_helpers');
 
 const REDIRECT_URI = process.env.TINK_REDIRECT_URI;
-const CLIENT_ID    = process.env.TINK_CLIENT_ID;
-const SCOPES       = 'accounts:read transactions:read credentials:read credentials:write';
 
 module.exports = async (req, res) => {
   cors(res);
@@ -30,23 +28,24 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const clientToken = await getClientToken('authorization:grant');
+    const clientToken = await getClientToken('link-session:write');
 
-    const idHint = externalUserId || tinkUserId;
-    const userKey = externalUserId || tinkUserId;
+    const reference = (externalUserId || tinkUserId || '').slice(0, 50);
+    const sessionBody = {
+      user: {
+        firstName: 'Banco',
+        lastName: 'Gitano',
+      },
+      ...(reference ? { externalReference: reference } : {}),
+    };
 
-    const r = await fetch(`${TINK_API}/api/v1/oauth/authorization-grant/delegate`, {
+    const r = await fetch(`${TINK_API}/link/v1/session`, {
       method:  'POST',
       headers: {
         Authorization:  `Bearer ${clientToken}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: new URLSearchParams({
-        external_user_id: userKey,
-        scope:            SCOPES,
-        actor_client_id:  CLIENT_ID,
-        id_hint:          idHint,
-      }),
+      body: JSON.stringify(sessionBody),
     });
 
     if (!r.ok) {
@@ -55,10 +54,9 @@ module.exports = async (req, res) => {
       return res.status(r.status).json({ error: txt });
     }
 
-    const { code } = await r.json();
+    const { sessionId } = await r.json();
     const url = `https://link.tink.com/1.0/transactions/connect-accounts` +
-          `?client_id=${CLIENT_ID}` +
-          `&authorization_code=${code}` +
+          `?session_id=${sessionId}` +
                 `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
                 `&market=${market}` +
                 `&locale=es_ES`;

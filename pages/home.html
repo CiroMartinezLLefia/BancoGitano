@@ -117,6 +117,24 @@
     .btn-refresh.spinning svg { animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #888;
+      font-size: 0.8125rem;
+    }
+    .month-filter {
+      flex: 1;
+      padding: 10px 12px;
+      background: #161618;
+      border: 1px solid #2a2a2e;
+      border-radius: 8px;
+      color: #f0f0f0;
+      font-size: 0.8125rem;
+      outline: none;
+    }
+
     /* ── View card ── */
     .view-card {
       background: #161618;
@@ -257,6 +275,13 @@
       Sync with Tink
     </button>
 
+    <div class="filter-row">
+      <span>Month</span>
+      <select id="month-filter" class="month-filter" onchange="applyMonthFilter()">
+        <option value="all">All months</option>
+      </select>
+    </div>
+
     <!-- View area -->
     <div class="view-card">
       <h2 id="view-title">Earned vs Spent</h2>
@@ -329,6 +354,7 @@
     // State
     let currentView  = 'bar';
     let chartInstance = null;
+    let selectedMonth = 'all';
 
     const EARNED_COLOR = '#4caf50';
     const SPENT_COLOR  = '#ef5350';
@@ -349,6 +375,8 @@
       }
 
       setRefreshSpinning(false);
+
+      populateMonthFilter();
 
       if (!loaded || transactions.length === 0) {
         showEmptyState();
@@ -422,6 +450,7 @@
         // Clear cache so we fetch fresh data
         sessionStorage.removeItem('tink_transactions');
         await loadTinkData();
+        populateMonthFilter();
         renderSummary();
         switchView(currentView);
         showToast('Up to date');
@@ -439,10 +468,44 @@
       btn.disabled = on;
     }
 
+    function formatMonthLabel(monthKey) {
+      const [year, month] = monthKey.split('-');
+      const date = new Date(Number(year), Number(month) - 1, 1);
+      return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    }
+
+    function populateMonthFilter() {
+      const select = document.getElementById('month-filter');
+      const prev = select.value || selectedMonth || 'all';
+      const months = [...new Set(transactions.map(t => (t.date || '').slice(0, 7)).filter(Boolean))]
+        .sort()
+        .reverse();
+
+      select.innerHTML = '<option value="all">All months</option>' +
+        months.map(m => `<option value="${m}">${formatMonthLabel(m)}</option>`).join('');
+
+      const nextValue = months.includes(prev) || prev === 'all' ? prev : 'all';
+      select.value = nextValue;
+      selectedMonth = nextValue;
+      select.disabled = months.length === 0;
+    }
+
+    function getFilteredTransactions() {
+      if (selectedMonth === 'all') return transactions;
+      return transactions.filter(t => (t.date || '').startsWith(selectedMonth));
+    }
+
+    function applyMonthFilter() {
+      selectedMonth = document.getElementById('month-filter').value;
+      renderSummary();
+      switchView(currentView);
+    }
+
     // Summary
     function renderSummary() {
-      const inc = transactions.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
-      const exp = transactions.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+      const filtered = getFilteredTransactions();
+      const inc = filtered.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+      const exp = filtered.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
       document.getElementById('sum-income').textContent  = `+€${inc.toFixed(0)}`;
       document.getElementById('sum-expense').textContent = `-€${exp.toFixed(0)}`;
       const bal = inc - exp;
@@ -488,8 +551,9 @@
     // Bar
     function renderBarChart() {
       destroyChart();
-      const earned = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-      const spent = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const filtered = getFilteredTransactions();
+      const earned = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const spent = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
       chartInstance = new Chart(document.getElementById('main-chart'), {
         type: 'bar',
         data: {
@@ -503,8 +567,9 @@
     // Pie
     function renderPieChart() {
       destroyChart();
-      const earned = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-      const spent = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const filtered = getFilteredTransactions();
+      const earned = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const spent = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
       chartInstance = new Chart(document.getElementById('main-chart'), {
         type: 'doughnut',
         data: {
@@ -524,7 +589,7 @@
     // Line
     function renderLineChart() {
       destroyChart();
-      const sorted = [...transactions].sort((a,b) => new Date(a.date) - new Date(b.date));
+      const sorted = [...getFilteredTransactions()].sort((a,b) => new Date(a.date) - new Date(b.date));
       const byDay = {};
       sorted.forEach(t => {
         const day = t.date.slice(5);
@@ -576,7 +641,7 @@
 
     // Table
     function renderTable() {
-      const sorted = [...transactions].sort((a,b) => new Date(b.date) - new Date(a.date));
+      const sorted = [...getFilteredTransactions()].sort((a,b) => new Date(b.date) - new Date(a.date));
       document.getElementById('table-body').innerHTML = sorted.map(t => `
         <tr>
           <td>${t.date.slice(5)}</td>

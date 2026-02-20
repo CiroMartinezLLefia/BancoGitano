@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Banco Gitano</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../scripts/chartjs-plugin-datalabels.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -568,7 +569,20 @@
           labels: ['Earned', 'Spent'],
           datasets: [{ data: [earned, spent], backgroundColor: [EARNED_COLOR, SPENT_COLOR], borderRadius: 5, borderWidth: 0 }]
         },
-        options: sharedOpts()
+        options: {
+          ...sharedOpts(),
+          plugins: {
+            ...sharedOpts().plugins,
+            datalabels: {
+              anchor: 'end',
+              align: 'start',
+              color: '#fff',
+              font: { weight: 'bold', size: 14 },
+              formatter: function(value) { return `€${value.toFixed(2)}`; }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
       });
     }
 
@@ -576,21 +590,35 @@
     function renderPieChart() {
       destroyChart();
       const filtered = getFilteredTransactions();
-      const earned = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-      const spent = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      // Dividir cada mitad del pastel por transacción (earned/spent), aunque compartan color
+      const earnedTxs = filtered.filter(t => t.type === 'income');
+      const spentTxs = filtered.filter(t => t.type === 'expense');
+      const pieData = [...earnedTxs.map(t => ({...t, _pieType: 'earned'})), ...spentTxs.map(t => ({...t, _pieType: 'spent'}))];
       chartInstance = new Chart(document.getElementById('main-chart'), {
         type: 'doughnut',
         data: {
-          labels: ['Earned', 'Spent'],
-          datasets: [{ data: [earned, spent], backgroundColor: [EARNED_COLOR, SPENT_COLOR], borderColor: '#161618', borderWidth: 2, hoverOffset: 6 }]
+          labels: pieData.map((t, i) => `${t._pieType === 'earned' ? 'Earned' : 'Spent'} #${i+1}`),
+          datasets: [{
+            data: pieData.map(t => t.amount),
+            backgroundColor: pieData.map(t => t._pieType === 'earned' ? EARNED_COLOR : SPENT_COLOR),
+            borderColor: '#161618',
+            borderWidth: 2,
+            hoverOffset: 6
+          }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, cutout: '58%',
           plugins: {
             legend: { position: 'bottom', labels: { color: '#555', font: { size: 11 }, padding: 12, usePointStyle: true } },
-            tooltip: { callbacks: { label: ctx => ` €${ctx.parsed.toFixed(2)}` } }
+            tooltip: { callbacks: { label: ctx => ` €${ctx.parsed.toFixed(2)}` } },
+            datalabels: {
+              color: '#fff',
+              font: { weight: 'bold', size: 12 },
+              formatter: function(value) { return `€${value.toFixed(2)}`; }
+            }
           }
-        }
+        },
+        plugins: [ChartDataLabels]
       });
     }
 

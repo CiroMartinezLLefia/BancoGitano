@@ -15,11 +15,16 @@
 const { TINK_API, cors, getClientToken } = require('./_helpers');
 
 const REDIRECT_URI = process.env.TINK_REDIRECT_URI;
+const CLIENT_ID    = process.env.TINK_CLIENT_ID;
 
 module.exports = async (req, res) => {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
+
+  if (!CLIENT_ID || !REDIRECT_URI) {
+    return res.status(500).json({ error: 'Missing TINK_CLIENT_ID or TINK_REDIRECT_URI' });
+  }
 
   const { tinkUserId, externalUserId, market = 'ES' } = req.body || {};
 
@@ -56,7 +61,8 @@ module.exports = async (req, res) => {
 
     const { sessionId } = await r.json();
     const url = `https://link.tink.com/1.0/transactions/connect-accounts` +
-          `?session_id=${sessionId}` +
+          `?client_id=${CLIENT_ID}` +
+          `&session_id=${sessionId}` +
                 `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
                 `&market=${market}` +
                 `&locale=es_ES`;

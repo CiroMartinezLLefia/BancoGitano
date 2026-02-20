@@ -158,7 +158,6 @@
     .data-table tbody tr { border-bottom: 1px solid #1a1a1d; }
     .data-table td { padding: 10px; color: #ccc; }
     .data-table td.desc { color: #f0f0f0; font-weight: 500; }
-    .data-table td.cat  { color: #555; }
     .data-table td.inc  { color: #4caf50; font-weight: 600; }
     .data-table td.exp  { color: #ef5350; font-weight: 600; }
 
@@ -260,7 +259,7 @@
 
     <!-- View area -->
     <div class="view-card">
-      <h2 id="view-title">Spending by Category</h2>
+      <h2 id="view-title">Earned vs Spent</h2>
       <div class="chart-wrap" id="chart-wrap">
         <canvas id="main-chart"></canvas>
       </div>
@@ -270,7 +269,6 @@
             <tr>
               <th>Date</th>
               <th>Description</th>
-              <th>Category</th>
               <th>Amount</th>
             </tr>
           </thead>
@@ -332,8 +330,8 @@
     let currentView  = 'bar';
     let chartInstance = null;
 
-    const COLORS = ['#1565c0','#1976d2','#0288d1','#0097a7','#00838f',
-                    '#006064','#2e7d32','#1b5e20','#37474f','#263238'];
+    const EARNED_COLOR = '#4caf50';
+    const SPENT_COLOR  = '#ef5350';
 
     // ── Init — load data from Tink (or cache) ─────────────────────
     async function init() {
@@ -477,9 +475,9 @@
       } else {
         chartWrap.style.display = 'block';
         tableWrap.style.display = 'none';
-        if (view === 'bar')  { titleEl.textContent = 'Spending by Category'; renderBarChart();  }
-        if (view === 'pie')  { titleEl.textContent = 'Expense Breakdown';    renderPieChart();  }
-        if (view === 'line') { titleEl.textContent = 'Balance Over Time';    renderLineChart(); }
+        if (view === 'bar')  { titleEl.textContent = 'Earned vs Spent'; renderBarChart();  }
+        if (view === 'pie')  { titleEl.textContent = 'Earned vs Spent'; renderPieChart();  }
+        if (view === 'line') { titleEl.textContent = 'Earned vs Spent Over Time'; renderLineChart(); }
       }
     }
 
@@ -490,14 +488,13 @@
     // Bar
     function renderBarChart() {
       destroyChart();
-      const byCategory = {};
-      transactions.filter(t => t.type === 'expense')
-        .forEach(t => { byCategory[t.category] = (byCategory[t.category] || 0) + t.amount; });
+      const earned = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const spent = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
       chartInstance = new Chart(document.getElementById('main-chart'), {
         type: 'bar',
         data: {
-          labels: Object.keys(byCategory),
-          datasets: [{ data: Object.values(byCategory), backgroundColor: COLORS, borderRadius: 5, borderWidth: 0 }]
+          labels: ['Earned', 'Spent'],
+          datasets: [{ data: [earned, spent], backgroundColor: [EARNED_COLOR, SPENT_COLOR], borderRadius: 5, borderWidth: 0 }]
         },
         options: sharedOpts()
       });
@@ -506,14 +503,13 @@
     // Pie
     function renderPieChart() {
       destroyChart();
-      const byCategory = {};
-      transactions.filter(t => t.type === 'expense')
-        .forEach(t => { byCategory[t.category] = (byCategory[t.category] || 0) + t.amount; });
+      const earned = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const spent = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
       chartInstance = new Chart(document.getElementById('main-chart'), {
         type: 'doughnut',
         data: {
-          labels: Object.keys(byCategory),
-          datasets: [{ data: Object.values(byCategory), backgroundColor: COLORS, borderColor: '#161618', borderWidth: 2, hoverOffset: 6 }]
+          labels: ['Earned', 'Spent'],
+          datasets: [{ data: [earned, spent], backgroundColor: [EARNED_COLOR, SPENT_COLOR], borderColor: '#161618', borderWidth: 2, hoverOffset: 6 }]
         },
         options: {
           responsive: true, maintainAspectRatio: false, cutout: '58%',
@@ -529,29 +525,52 @@
     function renderLineChart() {
       destroyChart();
       const sorted = [...transactions].sort((a,b) => new Date(a.date) - new Date(b.date));
-      let running = 0;
-      const labels = [], data = [];
+      const byDay = {};
       sorted.forEach(t => {
-        running += t.type === 'income' ? t.amount : -t.amount;
-        labels.push(t.date.slice(5));   // MM-DD
-        data.push(+running.toFixed(2));
+        const day = t.date.slice(5);
+        if (!byDay[day]) byDay[day] = { earned: 0, spent: 0 };
+        if (t.type === 'income') byDay[day].earned += t.amount;
+        else byDay[day].spent += t.amount;
       });
+      const labels = Object.keys(byDay);
+      const earnedData = labels.map(d => +byDay[d].earned.toFixed(2));
+      const spentData = labels.map(d => +byDay[d].spent.toFixed(2));
       chartInstance = new Chart(document.getElementById('main-chart'), {
         type: 'line',
         data: {
           labels,
           datasets: [{
-            data,
-            borderColor: '#1976d2',
-            backgroundColor: '#1565c015',
+            label: 'Earned',
+            data: earnedData,
+            borderColor: EARNED_COLOR,
+            backgroundColor: '#4caf5015',
             borderWidth: 2,
             pointRadius: 3,
-            pointBackgroundColor: '#1976d2',
+            pointBackgroundColor: EARNED_COLOR,
+            fill: true,
+            tension: 0.35
+          }, {
+            label: 'Spent',
+            data: spentData,
+            borderColor: SPENT_COLOR,
+            backgroundColor: '#ef535015',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: SPENT_COLOR,
             fill: true,
             tension: 0.35
           }]
         },
-        options: sharedOpts()
+        options: {
+          ...sharedOpts(),
+          plugins: {
+            ...sharedOpts().plugins,
+            legend: {
+              display: true,
+              labels: { color: '#888', font: { size: 11 } }
+            }
+          }
+        }
       });
     }
 
@@ -562,7 +581,6 @@
         <tr>
           <td>${t.date.slice(5)}</td>
           <td class="desc">${t.description}</td>
-          <td class="cat">${t.category}</td>
           <td class="${t.type === 'income' ? 'inc' : 'exp'}">
             ${t.type === 'income' ? '+' : '-'}€${t.amount.toFixed(2)}
           </td>

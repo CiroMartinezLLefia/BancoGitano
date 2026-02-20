@@ -9,7 +9,7 @@
  * Return : { transactions: Array<NormalisedTransaction> }
  *
  * NormalisedTransaction shape:
- *   id, date, description, category, type ('income'|'expense'),
+ *   id, date, description, type ('income'|'expense'),
  *   amount (positive number), currency, accountId
  */
 
@@ -58,7 +58,6 @@ module.exports = async (req, res) => {
           id:          t.id,
           date:        (t.dates?.booked || t.dates?.value || '').slice(0, 10),
           description: t.descriptions?.display || t.descriptions?.original || '—',
-          category:    t.categories?.pfm?.name || 'Uncategorised',
           type,
           amount,
           currency:    t.amount?.currencyCode ?? 'EUR',

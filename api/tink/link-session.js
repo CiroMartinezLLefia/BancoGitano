@@ -15,6 +15,8 @@
 const { TINK_API, cors, getClientToken } = require('./_helpers');
 
 const REDIRECT_URI = process.env.TINK_REDIRECT_URI;
+const CLIENT_ID    = process.env.TINK_CLIENT_ID;
+const SCOPES       = 'accounts:read transactions:read credentials:read credentials:write';
 
 module.exports = async (req, res) => {
   cors(res);
@@ -28,32 +30,23 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const clientToken = await getClientToken('link-session:write');
+    const clientToken = await getClientToken('authorization:grant');
 
-    // Build the session body — prefer userId if available, else externalUserId
-    // Tink's /link/v1/session uses snake_case field names.
-    const sessionBody = {
-      market,
-      locale: 'es_ES',
-      redirect_uri: REDIRECT_URI,
-      products: ['TRANSACTIONS', 'ACCOUNTS'],
-    };
+    const idHint = externalUserId || tinkUserId;
+    const userKey = externalUserId || tinkUserId;
 
-    if (tinkUserId) {
-      sessionBody.user_id = tinkUserId;
-    } else {
-      sessionBody.external_user_id = externalUserId;
-    }
-
-    console.log('[link-session] Request body:', JSON.stringify(sessionBody));
-
-    const r = await fetch(`${TINK_API}/link/v1/session`, {
+    const r = await fetch(`${TINK_API}/api/v1/oauth/authorization-grant/delegate`, {
       method:  'POST',
       headers: {
         Authorization:  `Bearer ${clientToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify(sessionBody),
+      body: new URLSearchParams({
+        external_user_id: userKey,
+        scope:            SCOPES,
+        actor_client_id:  CLIENT_ID,
+        id_hint:          idHint,
+      }),
     });
 
     if (!r.ok) {
@@ -62,12 +55,13 @@ module.exports = async (req, res) => {
       return res.status(r.status).json({ error: txt });
     }
 
-    const data = await r.json();
-    const sid = data.sessionId || data.session_id;
-    console.log('[link-session] Tink response:', JSON.stringify(data));
+    const { code } = await r.json();
     const url = `https://link.tink.com/1.0/transactions/connect-accounts` +
-                `?session_id=${sid}` +
-                `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+          `?client_id=${CLIENT_ID}` +
+          `&authorization_code=${code}` +
+                `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+                `&market=${market}` +
+                `&locale=es_ES`;
 
     return res.status(200).json({ url });
   } catch (err) {

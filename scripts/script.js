@@ -26,6 +26,12 @@ function getAccessToken() {
   return sessionStorage.getItem('tink_access_token');
 }
 
+/** Clear only Tink session state from browser storage. */
+function clearTinkSession() {
+  sessionStorage.removeItem('tink_access_token');
+  sessionStorage.removeItem('tink_transactions');
+}
+
 /** Authorised fetch wrapper — attaches Bearer token to every request. */
 async function apiFetch(path, options = {}) {
   const token = getAccessToken();

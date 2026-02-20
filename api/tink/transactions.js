@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
 
     do {
       const url = new URL(`${TINK_API}/data/v2/transactions`);
-      url.searchParams.set('pageSize', '200');
+      url.searchParams.set('pageSize', '100');
       if (pageToken) url.searchParams.set('pageToken', pageToken);
 
       const r = await fetch(url.toString(), {

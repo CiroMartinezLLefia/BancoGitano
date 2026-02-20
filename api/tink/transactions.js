@@ -14,9 +14,11 @@
  */
 
 const { TINK_API, cors } = require('./_helpers');
+const PAGE_SIZE = '100';
 
 module.exports = async (req, res) => {
   cors(res);
+  res.setHeader('X-BG-Transactions-PageSize', PAGE_SIZE);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET')    return res.status(405).json({ error: 'Method not allowed' });
 
@@ -32,7 +34,7 @@ module.exports = async (req, res) => {
 
     do {
       const url = new URL(`${TINK_API}/data/v2/transactions`);
-      url.searchParams.set('pageSize', '100');
+      url.searchParams.set('pageSize', PAGE_SIZE);
       if (pageToken) url.searchParams.set('pageToken', pageToken);
 
       const r = await fetch(url.toString(), {

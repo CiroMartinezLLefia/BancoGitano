@@ -35,6 +35,7 @@ module.exports = async (req, res) => {
       market,
       locale: 'es_ES',
       redirectUri: REDIRECT_URI,
+      products: ['TRANSACTIONS', 'ACCOUNTS'],
     };
 
     if (tinkUserId) {
@@ -42,6 +43,8 @@ module.exports = async (req, res) => {
     } else {
       sessionBody.externalUserId = externalUserId;
     }
+
+    console.log('[link-session] Request body:', JSON.stringify(sessionBody));
 
     const r = await fetch(`${TINK_API}/link/v1/session`, {
       method:  'POST',

@@ -31,17 +31,18 @@ module.exports = async (req, res) => {
     const clientToken = await getClientToken('link-session:write');
 
     // Build the session body — prefer userId if available, else externalUserId
+    // Tink's /link/v1/session uses snake_case field names.
     const sessionBody = {
       market,
       locale: 'es_ES',
-      redirectUri: REDIRECT_URI,
+      redirect_uri: REDIRECT_URI,
       products: ['TRANSACTIONS', 'ACCOUNTS'],
     };
 
     if (tinkUserId) {
-      sessionBody.userId = tinkUserId;
+      sessionBody.user_id = tinkUserId;
     } else {
-      sessionBody.externalUserId = externalUserId;
+      sessionBody.external_user_id = externalUserId;
     }
 
     console.log('[link-session] Request body:', JSON.stringify(sessionBody));
@@ -61,9 +62,11 @@ module.exports = async (req, res) => {
       return res.status(r.status).json({ error: txt });
     }
 
-    const { sessionId } = await r.json();
+    const data = await r.json();
+    const sid = data.sessionId || data.session_id;
+    console.log('[link-session] Tink response:', JSON.stringify(data));
     const url = `https://link.tink.com/1.0/transactions/connect-accounts` +
-                `?session_id=${sessionId}` +
+                `?session_id=${sid}` +
                 `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
     return res.status(200).json({ url });

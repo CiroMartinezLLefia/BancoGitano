@@ -1,62 +1,120 @@
 /**
- * BANCO GITANO — Example Transactions
- * ─────────────────────────────────────
- * This dataset mimics the structure returned by the Tink Transactions API.
- * Replace with real Tink API calls when ready.
+ * BANCO GITANO — Client-side Tink integration
+ * ─────────────────────────────────────────────
+ * All sensitive calls (token exchange, link-session creation, transaction
+ * proxying) go through our own Vercel serverless functions under /api/tink/.
+ * No client_secret is ever present in this file.
  *
- * Tink Transaction fields (simplified):
- *   id          — unique transaction ID
- *   date        — ISO date string (YYYY-MM-DD)
- *   description — merchant / payee name
- *   category    — Tink category label
- *   type        — 'income' | 'expense'
- *   amount      — absolute value in EUR
- *   currency    — ISO 4217 currency code
- *   accountId   — linked bank account ID
+ * Production flow
+ * ───────────────
+ * 1. Sign-up  → POST /api/tink/create-user  → stores tinkUserId in session
+ * 2. "Sync"   → POST /api/tink/link-session → redirects browser to Tink Link
+ * 3. Callback → index.html catches ?code=   → POST /api/tink/token
+ *                                           → stores accessToken in sessionStorage
+ *               then → home.html
+ * 4. Home     → GET  /api/tink/transactions (Authorization: Bearer accessToken)
+ * 5. Home     → GET  /api/tink/accounts     (Authorization: Bearer accessToken)
  */
 
-const transactions = [
-  // ── Income ────────────────────────────────────────────────────────
-  { id: 'txn_001', date: '2026-02-01', description: 'Salary — Gitano Corp',        category: 'Salary',        type: 'income',  amount: 2800.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_002', date: '2026-02-03', description: 'Freelance Invoice #42',        category: 'Freelance',     type: 'income',  amount:  450.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_003', date: '2026-02-10', description: 'Dividend — ETF Portfolio',     category: 'Investment',    type: 'income',  amount:   82.50, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_004', date: '2026-02-14', description: 'Refund — Amazon Order',        category: 'Refund',        type: 'income',  amount:   34.99, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_005', date: '2026-02-20', description: 'Bank Interest',                category: 'Interest',      type: 'income',  amount:    5.12, currency: 'EUR', accountId: 'acc_savings' },
+// ── Mutable transactions array — filled by loadTinkData() ──────────
+let transactions = [];
 
-  // ── Food & Drink ──────────────────────────────────────────────────
-  { id: 'txn_006', date: '2026-02-01', description: 'Mercadona',                    category: 'Groceries',     type: 'expense', amount:   87.40, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_007', date: '2026-02-04', description: 'Starbucks',                    category: 'Café',          type: 'expense', amount:    6.80, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_008', date: '2026-02-07', description: 'El Fogón Restaurant',          category: 'Dining Out',    type: 'expense', amount:   42.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_009', date: '2026-02-11', description: 'Carrefour',                    category: 'Groceries',     type: 'expense', amount:   63.10, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_010', date: '2026-02-15', description: 'McDonald\'s',                  category: 'Fast Food',     type: 'expense', amount:   11.60, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_011', date: '2026-02-18', description: 'Glovo Delivery',               category: 'Dining Out',    type: 'expense', amount:   23.90, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_012', date: '2026-02-21', description: 'Lidl',                         category: 'Groceries',     type: 'expense', amount:   51.75, currency: 'EUR', accountId: 'acc_main' },
+// ── Helpers ────────────────────────────────────────────────────────
 
-  // ── Housing ───────────────────────────────────────────────────────
-  { id: 'txn_013', date: '2026-02-01', description: 'Rent — Calle Mayor 12',        category: 'Rent',          type: 'expense', amount:  950.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_014', date: '2026-02-05', description: 'Endesa Electricity Bill',      category: 'Utilities',     type: 'expense', amount:   74.30, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_015', date: '2026-02-05', description: 'Canal Isabel II Water Bill',   category: 'Utilities',     type: 'expense', amount:   28.90, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_016', date: '2026-02-06', description: 'Internet — Movistar',          category: 'Internet',      type: 'expense', amount:   39.99, currency: 'EUR', accountId: 'acc_main' },
+/** Current user access token from sessionStorage. */
+function getAccessToken() {
+  return sessionStorage.getItem('tink_access_token');
+}
 
-  // ── Transport ──────────────────────────────────────────────────────
-  { id: 'txn_017', date: '2026-02-02', description: 'Metro Madrid — Monthly Pass',  category: 'Transport',     type: 'expense', amount:   54.60, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_018', date: '2026-02-08', description: 'Uber',                         category: 'Taxi',          type: 'expense', amount:   12.40, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_019', date: '2026-02-13', description: 'Renfe Train Ticket',           category: 'Transport',     type: 'expense', amount:   38.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_020', date: '2026-02-19', description: 'BP Fuel Station',              category: 'Fuel',          type: 'expense', amount:   55.00, currency: 'EUR', accountId: 'acc_main' },
+/** Authorised fetch wrapper — attaches Bearer token to every request. */
+async function apiFetch(path, options = {}) {
+  const token = getAccessToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+  const res = await fetch(path, { ...options, headers });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`${path} failed (${res.status}): ${txt}`);
+  }
+  return res.json();
+}
 
-  // ── Health ────────────────────────────────────────────────────────
-  { id: 'txn_021', date: '2026-02-03', description: 'Farmacia Vallehermoso',        category: 'Pharmacy',      type: 'expense', amount:   18.50, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_022', date: '2026-02-12', description: 'Sanitas Health Insurance',     category: 'Insurance',     type: 'expense', amount:   65.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_023', date: '2026-02-17', description: 'Gym — Holmes Place',           category: 'Sport & Gym',   type: 'expense', amount:   49.00, currency: 'EUR', accountId: 'acc_main' },
+// ── Tink user creation (called at sign-up) ─────────────────────────
 
-  // ── Entertainment & Shopping ──────────────────────────────────────
-  { id: 'txn_024', date: '2026-02-06', description: 'Netflix',                      category: 'Streaming',     type: 'expense', amount:   17.99, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_025', date: '2026-02-06', description: 'Spotify',                      category: 'Streaming',     type: 'expense', amount:    9.99, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_026', date: '2026-02-09', description: 'Zara',                         category: 'Clothing',      type: 'expense', amount:   79.95, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_027', date: '2026-02-14', description: 'Cines Callao Cinema',          category: 'Entertainment', type: 'expense', amount:   16.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_028', date: '2026-02-16', description: 'El Corte Inglés — Electronics',category: 'Electronics',   type: 'expense', amount:  199.00, currency: 'EUR', accountId: 'acc_main' },
-  { id: 'txn_029', date: '2026-02-22', description: 'Amazon — Books',               category: 'Education',     type: 'expense', amount:   29.90, currency: 'EUR', accountId: 'acc_main' },
+/**
+ * Register a new Tink permanent user linked to the current app user.
+ * @param {string} externalUserId — unique identifier (e.g. email)
+ * @param {string} market         — ISO 3166-1 country code (default 'ES')
+ * @returns {Promise<{tinkUserId: string|null, alreadyExists?: boolean}>}
+ */
+async function createTinkUser(externalUserId, market = 'ES') {
+  return apiFetch('/api/tink/create-user', {
+    method: 'POST',
+    body:   JSON.stringify({ externalUserId, market }),
+  });
+}
 
-  // ── Savings & Transfers ───────────────────────────────────────────
-  { id: 'txn_030', date: '2026-02-01', description: 'Transfer to Savings Account',  category: 'Savings',       type: 'expense', amount:  300.00, currency: 'EUR', accountId: 'acc_main' },
-];
+// ── Tink Link session (called to open bank-connection UI) ──────────
+
+/**
+ * Ask the server to create a Tink Link session and return the redirect URL.
+ * @param {string|null} tinkUserId     — preferred; stored from sign-up.
+ * @param {string|null} externalUserId — fallback if tinkUserId is unavailable.
+ * @returns {Promise<string>} the Tink Link URL to redirect the user to.
+ */
+async function buildTinkLinkUrl(tinkUserId, externalUserId) {
+  const { url } = await apiFetch('/api/tink/link-session', {
+    method: 'POST',
+    body:   JSON.stringify({ tinkUserId, externalUserId }),
+  });
+  return url;
+}
+
+// ── Token exchange (called once per bank-connection callback) ──────
+
+/**
+ * Exchange the Tink authorization code (from ?code= redirect) for a
+ * user access token. Stores the token in sessionStorage.
+ * @param {string} code
+ * @returns {Promise<void>}
+ */
+async function exchangeCodeForToken(code) {
+  const { accessToken } = await apiFetch('/api/tink/token', {
+    method: 'POST',
+    body:   JSON.stringify({ code }),
+  });
+  sessionStorage.setItem('tink_access_token', accessToken);
+}
+
+// ── Transactions ───────────────────────────────────────────────────
+
+/**
+ * Fetch transactions from our server proxy and store them in the global
+ * `transactions` array. Also persists to sessionStorage for fast reload.
+ * @returns {Promise<boolean>} true if any transactions were loaded.
+ */
+async function loadTinkData() {
+  const data = await apiFetch('/api/tink/transactions');
+  transactions = data.transactions || [];
+  sessionStorage.setItem('tink_transactions', JSON.stringify(transactions));
+  return transactions.length > 0;
+}
+
+/**
+ * Restore cached transactions from sessionStorage (avoids a redundant
+ * network call on soft reload / in-app navigation).
+ * @returns {boolean} true if cached data was found and non-empty.
+ */
+function restoreCachedTransactions() {
+  const cached = sessionStorage.getItem('tink_transactions');
+  if (!cached) return false;
+  try {
+    transactions = JSON.parse(cached);
+    return transactions.length > 0;
+  } catch {
+    return false;
+  }
+}

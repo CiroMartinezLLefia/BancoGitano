@@ -27,14 +27,36 @@
 </head>
 <body>
   <div class="spinner"></div>
+  <script src="scripts/script.js"></script>
   <script>
-    // Check auth — stored in localStorage after login
-    const session = localStorage.getItem('bg_session');
-    if (session) {
-      window.location.replace('pages/home.html');
-    } else {
-      window.location.replace('pages/login.html');
-    }
+    (async () => {
+      // ── Tink redirect callback ────────────────────────────────────
+      // After the user links their bank, Tink redirects here with ?code=XXX.
+      // We exchange the code server-side (keeping client_secret safe) and
+      // store only the resulting access token in sessionStorage.
+      const params   = new URLSearchParams(window.location.search);
+      const tinkCode = params.get('code');
+
+      if (tinkCode) {
+        try {
+          await exchangeCodeForToken(tinkCode);   // POST /api/tink/token
+        } catch (err) {
+          console.error('Token exchange error:', err);
+        }
+        // Clean ?code= from URL regardless of success
+        window.history.replaceState({}, '', window.location.pathname);
+        window.location.replace('pages/home.html');
+        return;
+      }
+
+      // ── Normal routing ────────────────────────────────────────────
+      const session = localStorage.getItem('bg_session');
+      if (session) {
+        window.location.replace('pages/home.html');
+      } else {
+        window.location.replace('pages/login.html');
+      }
+    })();
   </script>
 </body>
 </html>

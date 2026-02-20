@@ -299,6 +299,7 @@
 
 </div><!-- /.page -->
 
+  <script src="../scripts/script.js"></script>
   <script>
     // Redirect if already logged in
     if (localStorage.getItem('bg_session')) {
@@ -326,7 +327,6 @@
         return;
       }
 
-      // Demo auth — replace with real Tink / backend call
       const stored = JSON.parse(localStorage.getItem('bg_users') || '[]');
       const user   = stored.find(u => u.email === email && u.password === password);
 
@@ -342,9 +342,10 @@
     });
 
     // ── Sign-up submit ────────────────────────
-    document.getElementById('form-signup').addEventListener('submit', function(e) {
+    document.getElementById('form-signup').addEventListener('submit', async function(e) {
       e.preventDefault();
-      const errEl = document.getElementById('signup-error');
+      const errEl  = document.getElementById('signup-error');
+      const btnEl  = e.target.querySelector('.btn-submit');
 
       const first    = document.getElementById('su-firstname').value.trim();
       const last     = document.getElementById('su-lastname').value.trim();
@@ -372,7 +373,6 @@
         return;
       }
 
-      // Save locally (replace with real backend + Tink user creation)
       const users = JSON.parse(localStorage.getItem('bg_users') || '[]');
       if (users.find(u => u.email === email)) {
         errEl.textContent = 'An account with this email already exists.';
@@ -380,12 +380,26 @@
         return;
       }
 
-      const newUser = { name: `${first} ${last}`, email, phone, dob, country, nid, password };
+      // Disable button while talking to Tink
+      btnEl.disabled    = true;
+      btnEl.textContent = 'Creating account…';
+      errEl.style.display = 'none';
+
+      // Register the user in Tink (POST /api/tink/create-user)
+      let tinkUserId = null;
+      try {
+        const result = await createTinkUser(email, country);
+        tinkUserId = result.tinkUserId;
+      } catch (err) {
+        console.warn('Tink user creation failed (non-blocking):', err.message);
+        // Not fatal — the user can still connect their bank later via link-session
+      }
+
+      const newUser = { name: `${first} ${last}`, email, phone, dob, country, nid, password, tinkUserId };
       users.push(newUser);
       localStorage.setItem('bg_users', JSON.stringify(users));
       localStorage.setItem('bg_session', JSON.stringify(newUser));
 
-      errEl.style.display = 'none';
       window.location.replace('home.html');
     });
   </script>

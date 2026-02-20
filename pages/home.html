@@ -335,9 +335,97 @@
     const COLORS = ['#1565c0','#1976d2','#0288d1','#0097a7','#00838f',
                     '#006064','#2e7d32','#1b5e20','#37474f','#263238'];
 
-    // Init
-    renderSummary();
-    switchView('bar');
+    // ── Init — load data from Tink (or cache) ─────────────────────
+    async function init() {
+      setRefreshSpinning(true);
+
+      let loaded = restoreCachedTransactions();   // instant — sessionStorage cache
+
+      if (!loaded && getAccessToken()) {
+        try {
+          loaded = await loadTinkData();          // GET /api/tink/transactions
+        } catch (err) {
+          console.error('Tink API error:', err);
+          showToast('Could not load transactions.');
+        }
+      }
+
+      setRefreshSpinning(false);
+
+      if (!loaded || transactions.length === 0) {
+        showEmptyState();
+        return;
+      }
+
+      renderSummary();
+      switchView('bar');
+    }
+
+    init();
+
+    // ── Empty state ───────────────────────────────────────────────
+    function showEmptyState() {
+      document.getElementById('sum-income').textContent  = '—';
+      document.getElementById('sum-expense').textContent = '—';
+      document.getElementById('sum-balance').textContent = '—';
+      document.getElementById('view-title').textContent  = 'No data';
+      document.getElementById('chart-wrap').innerHTML =
+        `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                     height:200px;gap:12px;color:#555;font-size:0.875rem;text-align:center;padding:0 24px;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#444"
+               stroke-width="1.5" stroke-linecap="round">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <path d="M16 7V5a2 2 0 0 0-4 0v2"/>
+            <line x1="12" y1="12" x2="12" y2="16"/>
+            <circle cx="12" cy="12" r=".5" fill="#444"/>
+          </svg>
+          <span>No bank data connected yet.<br>
+            Tap <strong style="color:#aaa">Sync with Tink</strong> to link your bank account.</span>
+        </div>`;
+    }
+
+    // ── Refresh / Sync with Tink ──────────────────────────────────
+    async function refresh() {
+      setRefreshSpinning(true);
+
+      if (!getAccessToken()) {
+        // No token yet — send the user through Tink Link to connect a bank.
+        // The server creates the link session; we only receive the redirect URL.
+        showToast('Opening Tink…');
+        try {
+          const { tinkUserId, email } = session;
+          const url = await buildTinkLinkUrl(tinkUserId || null, email);
+          window.location.href = url;
+        } catch (err) {
+          console.error('Link-session error:', err);
+          showToast('Could not open Tink. Try again.');
+          setRefreshSpinning(false);
+        }
+        return;
+      }
+
+      // Already have a token — re-fetch fresh data
+      showToast('Syncing with Tink…');
+      try {
+        // Clear cache so we fetch fresh data
+        sessionStorage.removeItem('tink_transactions');
+        await loadTinkData();
+        renderSummary();
+        switchView(currentView);
+        showToast('Up to date');
+      } catch (err) {
+        console.error('Tink sync error:', err);
+        showToast('Sync failed — try reconnecting your bank');
+      } finally {
+        setRefreshSpinning(false);
+      }
+    }
+
+    function setRefreshSpinning(on) {
+      const btn = document.getElementById('btn-refresh');
+      btn.classList.toggle('spinning', on);
+      btn.disabled = on;
+    }
 
     // Summary
     function renderSummary() {
@@ -349,24 +437,11 @@
       document.getElementById('sum-balance').textContent = `${bal >= 0 ? '+' : ''}€${bal.toFixed(0)}`;
     }
 
-    // Refresh
-    function refresh() {
-      const btn = document.getElementById('btn-refresh');
-      btn.classList.add('spinning');
-      btn.disabled = true;
-      showToast('Syncing with Tink…');
-      setTimeout(() => {
-        btn.classList.remove('spinning');
-        btn.disabled = false;
-        renderSummary();
-        switchView(currentView);
-        showToast('Up to date');
-      }, 1500);
-    }
-
     // Logout
     function logout() {
       localStorage.removeItem('bg_session');
+      sessionStorage.removeItem('tink_access_token');
+      sessionStorage.removeItem('tink_transactions');
       window.location.replace('login.html');
     }
 

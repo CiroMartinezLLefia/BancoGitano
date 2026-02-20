@@ -72,9 +72,9 @@ module.exports = async (req, res) => {
       method:  'POST',
       headers: {
         Authorization:  `Bearer ${clientToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
+      body: new URLSearchParams({
         external_user_id: externalUserId,
         scope:            SCOPES,
         actor_client_id:  CLIENT_ID,

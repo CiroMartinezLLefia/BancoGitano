@@ -393,7 +393,21 @@
         // The server creates the link session; we only receive the redirect URL.
         showToast('Opening Tink…');
         try {
-          const { tinkUserId, email } = session;
+          let { tinkUserId, email } = session;
+
+          // Ensure the user exists in Tink before requesting a link session.
+          // Sign-up already calls createTinkUser, but login does not, so we
+          // call it here as well (the endpoint is idempotent — 409 = OK).
+          if (!tinkUserId) {
+            const result = await createTinkUser(email, session.country || 'ES');
+            tinkUserId = result.tinkUserId;
+            // Persist the Tink user ID so we don't repeat this next time
+            if (tinkUserId) {
+              session.tinkUserId = tinkUserId;
+              localStorage.setItem('bg_session', JSON.stringify(session));
+            }
+          }
+
           const url = await buildTinkLinkUrl(tinkUserId || null, email);
           window.location.href = url;
         } catch (err) {

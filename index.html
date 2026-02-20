@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banco Gitano</title>
+  <style>
+    body {
+      margin: 0;
+      background: #07070d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #1a237e55;
+      border-top-color: #1976d2;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <script>
+    // Check auth — stored in localStorage after login
+    const session = localStorage.getItem('bg_session');
+    if (session) {
+      window.location.replace('pages/home.html');
+    } else {
+      window.location.replace('pages/login.html');
+    }
+  </script>
+</body>
+</html>

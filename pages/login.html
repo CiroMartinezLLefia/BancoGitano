@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Banco Gitano</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0c0c0e;
+      color: #f0f0f0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Page wrapper ── */
+    .page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 48px 24px 32px;
+      max-width: 420px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .brand {
+      margin-bottom: 40px;
+    }
+    .brand-name {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .brand-sub {
+      font-size: 0.8125rem;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #222;
+      margin-bottom: 32px;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px 0;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #555;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab.active {
+      color: #fff;
+      border-bottom-color: #1565c0;
+    }
+
+    /* ── Forms ── */
+    .form { display: none; flex-direction: column; gap: 20px; }
+    .form.visible { display: flex; }
+
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #888;
+    }
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 14px 16px;
+      background: #161618;
+      border: 1px solid #2a2a2e;
+      border-radius: 10px;
+      color: #f0f0f0;
+      font-size: 1rem;
+      outline: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: #1565c0;
+    }
+    .field input::placeholder { color: #444; }
+    .field select option { background: #161618; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.75rem;
+      color: #444;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #222;
+    }
+
+    /* ── Forgot ── */
+    .forgot {
+      font-size: 0.8125rem;
+      color: #1976d2;
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: right;
+      padding: 0;
+      align-self: flex-end;
+      margin-top: -8px;
+    }
+
+    /* ── Error ── */
+    .error-msg {
+      display: none;
+      font-size: 0.8125rem;
+      color: #ef5350;
+      background: #1a0a0a;
+      border: 1px solid #3d1a1a;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    /* ── Submit button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: #1565c0;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      transition: background 0.15s;
+      margin-top: 4px;
+    }
+    .btn-submit:active { background: #0d47a1; }
+
+    /* ── Tink notice ── */
+    .notice {
+      font-size: 0.75rem;
+      color: #444;
+      line-height: 1.6;
+      text-align: center;
+      padding-top: 4px;
+    }
+    .notice strong { color: #666; }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Brand -->
+  <div class="brand">
+    <div class="brand-name">Banco Gitano</div>
+    <div class="brand-sub">Powered by Tink</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button class="tab active" onclick="switchTab('login')">Sign in</button>
+    <button class="tab"        onclick="switchTab('signup')">Create account</button>
+  </div>
+
+  <!-- ── LOGIN ── -->
+  <form class="form visible" id="form-login" novalidate>
+
+    <div class="field">
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" placeholder="you@example.com"
+             autocomplete="email" inputmode="email" required />
+    </div>
+
+    <div class="field">
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" placeholder="Password"
+             autocomplete="current-password" required />
+    </div>
+
+    <button type="button" class="forgot" onclick="alert('Password reset coming soon.')">
+      Forgot password?
+    </button>
+
+    <div class="error-msg" id="login-error"></div>
+
+    <button type="submit" class="btn-submit">Sign in</button>
+
+    <p class="notice">
+      Banking data retrieved securely via <strong>Tink</strong>.<br>
+      We never store your bank credentials.
+    </p>
+
+  </form>
+
+  <!-- ── SIGN UP ── -->
+  <form class="form" id="form-signup" novalidate>
+
+    <div class="row">
+      <div class="field">
+        <label for="su-firstname">First name</label>
+        <input id="su-firstname" type="text" placeholder="Jane"
+               autocomplete="given-name" required />
+      </div>
+      <div class="field">
+        <label for="su-lastname">Last name</label>
+        <input id="su-lastname" type="text" placeholder="Doe"
+               autocomplete="family-name" required />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="su-email">Email</label>
+      <input id="su-email" type="email" placeholder="you@example.com"
+             autocomplete="email" inputmode="email" required />
+    </div>
+
+    <div class="field">
+      <label for="su-phone">Phone number</label>
+      <input id="su-phone" type="tel" placeholder="+34 600 000 000"
+             autocomplete="tel" inputmode="tel" required />
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="su-dob">Date of birth</label>
+        <input id="su-dob" type="date" autocomplete="bday" max="2006-12-31" required />
+      </div>
+      <div class="field">
+        <label for="su-country">Country</label>
+        <select id="su-country" required>
+          <option value="">Select</option>
+          <option value="ES">Spain</option>
+          <option value="SE">Sweden</option>
+          <option value="DE">Germany</option>
+          <option value="GB">United Kingdom</option>
+          <option value="FR">France</option>
+          <option value="NL">Netherlands</option>
+          <option value="IT">Italy</option>
+          <option value="PT">Portugal</option>
+          <option value="NO">Norway</option>
+          <option value="FI">Finland</option>
+          <option value="DK">Denmark</option>
+          <option value="BE">Belgium</option>
+          <option value="AT">Austria</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="su-national-id">National ID — required by Tink</label>
+      <input id="su-national-id" type="text" placeholder="e.g. YYYYMMDD-XXXX"
+             autocomplete="off" required />
+    </div>
+
+    <div class="divider">Security</div>
+
+    <div class="field">
+      <label for="su-password">Password</label>
+      <input id="su-password" type="password" placeholder="Min. 8 characters"
+             autocomplete="new-password" minlength="8" required />
+    </div>
+
+    <div class="field">
+      <label for="su-confirm">Confirm password</label>
+      <input id="su-confirm" type="password" placeholder="Repeat password"
+             autocomplete="new-password" required />
+    </div>
+
+    <div class="error-msg" id="signup-error"></div>
+
+    <button type="submit" class="btn-submit">Create account</button>
+
+    <p class="notice">
+      Your data is shared with <strong>Tink AB</strong> under GDPR<br>
+      solely to connect your bank accounts.
+    </p>
+
+  </form>
+
+</div><!-- /.page -->
+
+  <script>
+    // Redirect if already logged in
+    if (localStorage.getItem('bg_session')) {
+      window.location.replace('home.html');
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'signup'));
+      });
+      document.getElementById('form-login').classList.toggle('visible', tab === 'login');
+      document.getElementById('form-signup').classList.toggle('visible', tab === 'signup');
+    }
+
+    // ── Login submit ──────────────────────────
+    document.getElementById('form-login').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const errEl    = document.getElementById('login-error');
+
+      if (!email || !password) {
+        errEl.textContent = 'Please fill in all fields.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // Demo auth — replace with real Tink / backend call
+      const stored = JSON.parse(localStorage.getItem('bg_users') || '[]');
+      const user   = stored.find(u => u.email === email && u.password === password);
+
+      if (!user && !(email === 'demo@bancogitano.com' && password === 'demo1234')) {
+        errEl.textContent = 'Incorrect email or password.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      errEl.style.display = 'none';
+      localStorage.setItem('bg_session', JSON.stringify(user || { email, name: 'Demo User' }));
+      window.location.replace('home.html');
+    });
+
+    // ── Sign-up submit ────────────────────────
+    document.getElementById('form-signup').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('signup-error');
+
+      const first    = document.getElementById('su-firstname').value.trim();
+      const last     = document.getElementById('su-lastname').value.trim();
+      const email    = document.getElementById('su-email').value.trim();
+      const phone    = document.getElementById('su-phone').value.trim();
+      const dob      = document.getElementById('su-dob').value;
+      const country  = document.getElementById('su-country').value;
+      const nid      = document.getElementById('su-national-id').value.trim();
+      const password = document.getElementById('su-password').value;
+      const confirm  = document.getElementById('su-confirm').value;
+
+      if (!first || !last || !email || !phone || !dob || !country || !nid || !password) {
+        errEl.textContent = 'Please fill in all fields.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (password !== confirm) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (password.length < 8) {
+        errEl.textContent = 'Password must be at least 8 characters.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      // Save locally (replace with real backend + Tink user creation)
+      const users = JSON.parse(localStorage.getItem('bg_users') || '[]');
+      if (users.find(u => u.email === email)) {
+        errEl.textContent = 'An account with this email already exists.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      const newUser = { name: `${first} ${last}`, email, phone, dob, country, nid, password };
+      users.push(newUser);
+      localStorage.setItem('bg_users', JSON.stringify(users));
+      localStorage.setItem('bg_session', JSON.stringify(newUser));
+
+      errEl.style.display = 'none';
+      window.location.replace('home.html');
+    });
+  </script>
+
+</body>
+</html>
